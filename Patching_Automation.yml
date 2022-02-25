@@ -4,6 +4,7 @@
   hosts: demo
   user: Admin1
   become: true
+  connection: ssh
   vars:
     item:  zabbix-agent.service
   tasks:
