@@ -1,0 +1,41 @@
+---
+ - name: Patching for Linux Servers
+   hosts: demo
+   user: ansible
+   become: true
+   serial: 1
+   connection: ssh
+   tasks:
+    - name: upgrade all packages
+      yum: name='*' state=latest
+
+    - name: Check for reboot hint.
+      shell: LAST_KERNEL=$(rpm -q --last kernel | awk 'NR==1{sub(/kernel-/,""); print $1}'); CURRENT_KERNEL=$(uname -r); if [ $LAST_KERNEL != $CURRENT_KERNEL ]; then echo 'reboot'; else echo 'no'; fi
+      ignore_errors: true
+      register: reboot_hint
+
+    - name: Reboot CentOS/RedHat systems if kernel updated
+      command: shutdown -r +1  "Rebooting CentOS/RedHat Servers After Kernel Patching"
+      async: 0
+      poll: 0
+      when: reboot_hint.stdout.find("reboot") != -1
+      register: rebooting
+      ignore_errors: true
+
+    - name: Pause for 180 secs
+      pause:
+        seconds: 180
+    - name: check if all the systems responding to ssh
+      local_action:
+       module: wait_for
+          host={{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}
+          port=22
+          search_regex=OpenSSH
+          delay=15
+          timeout=300
+          state=started
+    - name: start ntpd
+      service:
+        name: ntpd
+        state: started
+        enabled: yes
