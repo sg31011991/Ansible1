@@ -1,0 +1,12 @@
+---
+- hosts: demo
+  become: true
+  tasks:
+#    - debug:
+#        msg: ansible_hostname = {{ ansible_hostname }}
+    - name: start zabbix-agent
+      service:
+        name: zabbix-agent
+        state: started
+        enabled: yes
+      when: ansible_hostname == "VM2CentOS1"
