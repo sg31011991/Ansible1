@@ -52,6 +52,7 @@
         - zabbix-agent
     - name: checking service status
       command: systemctl status "{{ item }}"
+      when: ansible_hostname == "VM2CentOS1"
       with_items:
        - zabbix-agent
       register: result
