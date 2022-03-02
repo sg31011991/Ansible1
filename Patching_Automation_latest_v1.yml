@@ -1,0 +1,52 @@
+---
+- name: Patching for Linux Servers
+  hosts: demo
+  user: ansible
+  become: true
+  serial: 1
+  connection: ssh
+  tasks:
+
+    - name: OS VERSION
+      shell: cat /etc/os-release | grep -E PRETTY_NAME
+      register: response
+    - name: Check OS Version
+      debug: msg="{{ response.stdout }}"
+    - name: KERNEL VERSION checking before Patching
+      shell: rpm -q --last kernel
+      register: result
+      args:
+        warn: no
+    - name: Check KERNEL VERSION before Patching
+      debug: msg="{{ result.stdout_lines }}"
+    - name: install all updates
+      yum:
+       name: '*'
+       exclude: docker*,nfs-utils,dnsmasq
+       state: latest
+    - name: Reboot the machine
+      shell: "sleep 5 && reboot"
+      async: 1
+      poll: 0
+    - name: Wait for the machine to come back online
+      wait_for_connection:
+        connect_timeout: 60
+        sleep: 5
+        delay: 5
+        timeout: 300
+    - name: KERNEL VERSION after patching
+      shell: rpm -q --last kernel; cat /etc/os-release | grep -E PRETTY_NAME
+      register: result
+      args:
+        warn: no
+    - name: Updated KERNEL VERSION after Patching
+      debug: msg="{{ result.stdout_lines }}"; "{{ response.stdout }}"
+    - name: Start Services
+      service:
+        name: '{{ item }}'
+        enabled: yes
+        state: started
+      loop:
+        - ntpd
+        - chef-client
+        - zabbix-agent
